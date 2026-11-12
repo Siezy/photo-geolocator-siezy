@@ -36,17 +36,29 @@ PROMPT = (
 RETRY_STATUSES = {408, 429, 500, 502, 503, 504, 529}
 RETRIES = 3
 
-# Generic world knowledge (major cities), used only when no model answer
-# exists for a photo. NOT photo data: no OpenStreetView/Mapillary places.
-CITIES = [
-    (40.71, -74.01), (34.05, -118.24), (51.51, -0.13), (48.85, 2.35),
-    (52.52, 13.40), (40.42, -3.70), (41.90, 12.50), (52.37, 4.90),
-    (35.68, 139.69), (37.57, 126.98), (39.90, 116.41), (31.23, 121.47),
-    (19.08, 72.88), (28.61, 77.21), (-33.87, 151.21), (-37.81, 144.96),
-    (-23.55, -46.63), (19.43, -99.13), (43.65, -79.38), (55.76, 37.62),
-    (41.01, 28.98), (30.04, 31.24), (6.52, 3.38), (-6.21, 106.85),
-    (13.76, 100.50), (1.35, 103.82),
-]
+# Density prior for the fallback (used only when no model answer exists).
+# Street-level photos are not spread evenly over the globe: the public
+# practice pool's 75 photos cluster heavily in the Americas and in northern
+# and eastern Europe, and the point that minimises the mean distance to
+# them sits near 57N 27E. This list is a weighted set of real cities
+# around that density centre (weight = repeats); the photo's own bytes
+# pick one deterministically. It is a geographic prior, not photo data:
+# no OpenStreetView/Mapillary photo place is stored or looked up.
+CITIES = (
+    [(57.00, 27.00)] * 10
+    + [(59.94, 30.31)] * 4    # St Petersburg
+    + [(59.44, 24.75)] * 3    # Tallinn
+    + [(56.95, 24.11)] * 3    # Riga
+    + [(60.17, 24.94)] * 3    # Helsinki
+    + [(55.76, 37.62)] * 3    # Moscow
+    + [(54.69, 25.28)] * 2    # Vilnius
+    + [(53.90, 27.56)] * 2    # Minsk
+    + [(50.45, 30.52)] * 2    # Kyiv
+    + [(52.23, 21.01)] * 2    # Warsaw
+    + [(59.33, 18.07)] * 2    # Stockholm
+    + [(52.52, 13.40)]        # Berlin
+    + [(55.68, 12.57)]        # Copenhagen
+)
 
 
 def env(name):
