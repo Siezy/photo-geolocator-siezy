@@ -72,14 +72,16 @@ def http_json(url, body=None, headers=None):
             return res.status, res.read()
     except urllib.error.HTTPError as e:
         return e.code, e.read()
+    except (urllib.error.URLError, OSError):
+        return 0, b""
 
 
 def http_bytes(url):
     try:
         with urllib.request.urlopen(url, timeout=120) as res:
             return res.read()
-    except urllib.error.HTTPError as e:
-        raise SystemExit(f"GET {url}: HTTP {e.code}")
+    except (urllib.error.HTTPError, urllib.error.URLError, OSError):
+        return None
 
 
 def ask_anthropic(jpeg):
@@ -104,9 +106,10 @@ def ask_anthropic(jpeg):
             msg = json.loads(raw)
             return "\n".join(b.get("text", "") for b in msg.get("content", [])
                              if b.get("type") == "text")
-        if status in RETRY_STATUSES and attempt < RETRIES:
-            time.sleep(2 * (attempt + 1))
-            continue
+        if status in RETRY_STATUSES or status == 0:
+            if attempt < RETRIES:
+                time.sleep(2 * (attempt + 1))
+                continue
         sys.stderr.write(f"model refused (HTTP {status}): "
                          f"{raw[:200]!r}\n")
         return None
@@ -133,9 +136,10 @@ def ask_openai(jpeg):
             msg = json.loads(raw)
             ch = msg.get("choices", [{}])[0].get("message", {})
             return ch.get("content", "") or ""
-        if status in RETRY_STATUSES and attempt < RETRIES:
-            time.sleep(2 * (attempt + 1))
-            continue
+        if status in RETRY_STATUSES or status == 0:
+            if attempt < RETRIES:
+                time.sleep(2 * (attempt + 1))
+                continue
         sys.stderr.write(f"gpt refused (HTTP {status}): {raw[:200]!r}\n")
         return None
 
@@ -185,13 +189,14 @@ def fallback(jpeg):
 
 def work(photo):
     jpeg = http_bytes(f"{ENV_URL}{photo['url']}")
-    text = ask(jpeg)
+    seed = jpeg if jpeg is not None else photo["id"].encode()
+    text = ask(jpeg) if jpeg is not None else None
     c = coordinates(text) if text else None
     if c is None:
         if text:
             sys.stderr.write(f"no coords for {photo['id']}: "
                              f"{text[:200]!r}\n")
-        c = fallback(jpeg)
+        c = fallback(seed)
     return {"id": photo["id"], "lat": c[0], "lon": c[1]}
 
 
